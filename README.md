@@ -1,2 +1,2 @@
 # Nukebot
-Discord Nuke bot 
+Discord Server Nuke bot in Python
