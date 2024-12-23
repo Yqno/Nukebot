@@ -14,7 +14,7 @@ client = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 @client.event
 async def on_ready():
-    print(f"{client.user} is ready!")
+    print(f"{client.user} is ready & Coded by Yqno ")
     await client.change_presence(activity=discord.Game(name="BOTS_STATUS"))
 
 # Command to stop the bot
